@@ -45,13 +45,18 @@ int temp_AI[a_size] ;//儲存數量越小越能及時反應
 //一循環秒數(ms)
 const int delay_timer = 100;
 //間距多久時間檢查濃度誤差
-const int timer_check = 50;
+const int mearure_check = 50;
 void quickSort(int s[], int l, int r);
 //眾數暫存器
 int Mode_ai = 0;
+//============filter================
 //過濾後AI
 int filter_AI = 0;
-//暫存陣列
+double f_Singal_convert_Voltage = 0.0;
+double f_mv_1 = 0.0;
+double f_o2_sensor_ppm = 0.0;
+
+//============filter================
 
 
 void setup() {
@@ -67,7 +72,7 @@ void setup() {
 
 void loop() {
    
-    char s[] = "count1";
+   
   
    
     
@@ -91,7 +96,7 @@ void loop() {
     {
         temp_AI[count1 ] = temp_o2_sensor_AI;
     }
-   
+    
     {
         Serial.print("即時值_AI: ");
         Serial.println(temp_o2_sensor_AI);
@@ -115,7 +120,7 @@ void loop() {
             Serial.print("");
           }Serial.println("");*/
     }
-    quickSort(temp_AI, 0, a_size);//快速排序
+    
   /*for (int i = 0; i < 30; i++) {
     Serial.print("numd[");
     Serial.print(i);
@@ -126,12 +131,7 @@ void loop() {
   }Serial.println("");*/
   //counting_sort(temp_AI, 29);//取出眾數(過濾雜訊)
     //Mode_ai = ;
-    
-    filter_AI = counting_sort(temp_AI, a_size);
-
-    Singal_convert_Voltage = filter_AI * AI_Voltage_parameter;
-    mv_1 = Singal_convert_Voltage * 1000;
-    temp_o2_sensor_ppm = Singal_convert_Voltage * Voltage_ppm_parameter;
+    filter_measure();
     {
         Serial.print("過濾後AI: ");
         Serial.println(filter_AI);
@@ -162,8 +162,9 @@ void loop() {
     {
         //v1 = (v1 + temp_o2_sensor_ppm) / count1;
     }
-    if (count1 == timer_check)
+    if (count1 == mearure_check)
     {
+        quickSort(temp_AI, 0, a_size);//快速排序
         measured_now = temp_o2_sensor_ppm;//當下及時測值
         diff_value = measured_value1 * diff_value_percent;
         Serial.print("measured_value1: ");
@@ -304,3 +305,10 @@ int counting_sort(int arr[], int len)
     Serial.print(" ");
     return Mode_ai;
 }
+void filter_measure()
+{
+    filter_AI = counting_sort(temp_AI, a_size);
+       f_Singal_convert_Voltage = filter_AI * AI_Voltage_parameter;
+    f_mv_1 = f_Singal_convert_Voltage * 1000;
+    f_o2_sensor_ppm = f_Singal_convert_Voltage * Voltage_ppm_parameter;
+    }
