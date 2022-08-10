@@ -16,12 +16,7 @@
 //取幾筆
 #define record_leng 60;
 int O2_singal_AI = A0;
-//暫存o2測值(轉換成ppm)
-double temp_o2_sensor_ppm = 0.0;
-//暫存o2輸入訊號
-int temp_o2_sensor_AI = 0;
-//訊號轉換電壓值(及時電壓值)
-double Singal_convert_Voltage = 0.0;
+
 //計數器1
 int count1 = 0;
 //暫存第一次測值
@@ -31,96 +26,96 @@ double measured_now = 0.0;
 //alarm狀態
 int alarm_state = 0;
 //誤差百分比 5%
-double diff_value_percent = 0.05;
-//誤差值
-double diff_value = 0.0;
+double diff_value_percent = 0.0;
+
+double diff_value = 0.0;//誤差值
+
+bool o2_alarm_flage = false;//百分比濃度誤差警報
 // mv
-double mv_1 = 0.0;
+double real_mv_1 = 0.0;
 //切換延遲時間，每次切換時氣體閉鎖濃度飆高，等待5秒穩定=循環5次計數
 int alarm_delay_1 = 0;
 // 陣列大小
-const int a_size =50;
+const int a_size = 10;
 //暫存AI訊號
-int temp_AI[a_size] ;//儲存數量越小越能及時反應
+int temp_AI[a_size];//儲存數量越小越能及時反應
 //一循環秒數(ms)
-const int delay_timer = 100;
+const int delay_timer = 1000;
 //間距多久時間檢查濃度誤差
-const int mearure_check = 50;
+const int mearure_check = 10;
 void quickSort(int s[], int l, int r);
 //眾數暫存器
 int Mode_ai = 0;
 //============filter================
 //過濾後AI
-int filter_AI = 0;
-double f_Singal_convert_Voltage = 0.0;
+int filter_AI = 0;//o2輸入訊號
+double f_Singal_convert_Voltage = 0.0;//訊號轉換電壓值(電壓值)
 double f_mv_1 = 0.0;
-double f_o2_sensor_ppm = 0.0;
-
+double f_o2_sensor_ppm = 0.0; //o2測值(轉換成ppm)
 //============filter================
-
+//---------即時值---------------------
+int real_o2_sensor_AI = 0;//即時o2輸入訊號
+double real_o2_sensor_ppm = 0.0;//即時o2測值(轉換成ppm)
+double real_Singal_convert_Voltage = 0.0;//訊號轉換電壓值(即時電壓值)
+//---------即時值---------------------
 
 void setup() {
-    // put your setup code here, to run once:
-    pinMode(O2_singal_AI, INPUT);
-    pinMode(monitor_DI, INPUT);
-    pinMode(o2_alarm_1_DI, INPUT);
-    pinMode(o2_alarm_2_DI, INPUT);
-    pinMode(o2_alarm_DO, OUTPUT);
-    pinMode(interlock_DO, OUTPUT);
-    Serial.begin(9600);
+  // put your setup code here, to run once:
+  pinMode(O2_singal_AI, INPUT);
+  pinMode(monitor_DI, INPUT);
+  pinMode(o2_alarm_1_DI, INPUT);
+  pinMode(o2_alarm_2_DI, INPUT);
+  pinMode(o2_alarm_DO, OUTPUT);
+  pinMode(interlock_DO, OUTPUT);
+  Serial.begin(9600);
 }
 
 void loop() {
-   
-   
-  
-   
-    
-    temp_o2_sensor_AI = analogRead(O2_singal_AI);
-    /// <summary>
-    /// //先將陣列填滿，否則眾數為0
-    /// </summary>
-    if (count1 <= 1)//從頭開始時需讓陣列有值，否則為0
-    {
-        fill_tempAI_array();
-           }
-    if (abs(temp_o2_sensor_AI - filter_AI) > 15)//AI輸入即時值和過濾AI值差距>15，直接以即時值取代過濾AI值，變化速度才能即時反應
-    {
-        fill_tempAI_array();
-            }
-    if (count1> a_size)
-    {
-        temp_AI[count1 % a_size] = temp_o2_sensor_AI;//超過陣列大小重頭開始覆蓋寫入
-    }
-    else
-    {
-        temp_AI[count1 ] = temp_o2_sensor_AI;
-    }
-    
-    {
-        Serial.print("即時值_AI: ");
-        Serial.println(temp_o2_sensor_AI);
-        /*Serial.print("ppm:");
-        Serial.print(temp_o2_sensor_ppm);
-        Serial.println(" ppm");
-        Serial.print("過濾AI: ");
-        Serial.println(Mode_ai);
-        Serial.print("電壓(mv): ");
-        Serial.print(mv_1);
-        Serial.println("mv");*/
-    }
-   
-    {
-        /*for (int i = 0; i < 30; i++) {
-            Serial.print("numd[");
-            Serial.print(i);
-            Serial.print("]: ");
-            Serial.println(temp_AI[i]);
-            Serial.print(",");
-            Serial.print("");
-          }Serial.println("");*/
-    }
-    
+  real_o2_sensor_AI = analogRead(O2_singal_AI);
+  /// <summary>
+  /// //先將陣列填滿，否則眾數為0
+  /// </summary>
+  if (count1 <= 1)//從頭開始時需讓陣列有值，否則為0
+  {
+    fill_tempAI_array();
+  }
+  if (abs(real_o2_sensor_AI - filter_AI) > 10)//AI輸入即時值和過濾AI值差距>15，直接以即時值取代過濾AI值，變化速度才能即時反應
+  {
+    fill_tempAI_array();
+  }
+  if (count1 > a_size)
+  {
+    temp_AI[count1 % a_size] = real_o2_sensor_AI;//超過陣列大小重頭開始覆蓋寫入
+  }
+  else
+  {
+    temp_AI[count1] = real_o2_sensor_AI;
+  }
+
+  {
+    Serial.print("即時值_AI: ");
+    Serial.println(real_o2_sensor_AI);
+    /*Serial.print("ppm:");
+    Serial.print(temp_o2_sensor_ppm);
+    Serial.println(" ppm");
+    Serial.print("過濾AI: ");
+    Serial.println(Mode_ai);
+    Serial.print("電壓(mv): ");
+    Serial.print(mv_1);
+    Serial.println("mv");*/
+  }
+
+  {
+    /*for (int i = 0; i < 30; i++) {
+      Serial.print("numd[");
+      Serial.print(i);
+      Serial.print("]: ");
+      Serial.println(temp_AI[i]);
+      Serial.print(",");
+      Serial.print("");
+      }Serial.println("");*/
+  }
+
   /*for (int i = 0; i < 30; i++) {
     Serial.print("numd[");
     Serial.print(i);
@@ -131,184 +126,181 @@ void loop() {
   }Serial.println("");*/
   //counting_sort(temp_AI, 29);//取出眾數(過濾雜訊)
     //Mode_ai = ;
-    filter_measure();
+
+  filter_measure();
+
+  if (count1 == 5)//起始時暫存當時濃度
+  {
+    measured_value1 = real_o2_sensor_ppm;
+    Serial.print("temp_o2_sensor_ppm: ");
+    Serial.println(real_o2_sensor_ppm);
+    Serial.print("measured_value1: ");
+    Serial.println(measured_value1);
+  }
+  if (count1 != 0)
+  {
+    //v1 = (v1 + temp_o2_sensor_ppm) / count1;
+  }
+  
+  if (digitalRead(o2_alarm_1_DI) == HIGH || digitalRead(o2_alarm_2_DI) == HIGH)
+  {
+    alarm_delay_1++;
+    if (alarm_delay_1 == 50)//5秒=5次循環後濃度仍然H，則alarm
     {
-        Serial.print("過濾後AI: ");
-        Serial.println(filter_AI);
-
-        Serial.print("電壓: ");
-        Serial.print(Singal_convert_Voltage);
-        Serial.println(" V");
-
-        Serial.print("電壓(mv): ");
-        Serial.print(mv_1);
-        Serial.println(" mv");
-
-        Serial.print("ppm: ");
-        Serial.print(temp_o2_sensor_ppm);
-        Serial.println(" ppm");
+      alarm_state = 1;
     }
-
-    if (count1 == 1)//起始時暫存當時濃度
+    else if (o2_alarm_flage==false)
     {
-
-        measured_value1 = temp_o2_sensor_ppm;
-        Serial.print("temp_o2_sensor_ppm: ");
-        Serial.println(temp_o2_sensor_ppm);
-        Serial.print("measured_value1: ");
-        Serial.println(measured_value1);
+      alarm_delay_1 = 0;
+      alarm_state = 0;
     }
-    if (count1 != 0)
+  }
+   if (count1 == mearure_check)
+  {
+    quickSort(temp_AI, 0, a_size);//快速排序
+    real_measure();
+    diff_measure_value();
+    if (diff_value_percent <= 5)
     {
-        //v1 = (v1 + temp_o2_sensor_ppm) / count1;
-    }
-    if (count1 == mearure_check)
-    {
-        quickSort(temp_AI, 0, a_size);//快速排序
-        measured_now = temp_o2_sensor_ppm;//當下及時測值
-        diff_value = measured_value1 * diff_value_percent;
-        Serial.print("measured_value1: ");
-        Serial.println(measured_value1);
-        Serial.print("誤差值: ");
-        Serial.println(diff_value);
-        if (measured_value1)
-        {
-
-        }
-        //重新計數
-        count1 = 0;
-        //清空陣列
-        /*for (int i = 0; i < sizeof(temp_AI); ++i)
-        {
-          temp_AI[i] = (int)0;
-        }*/
-    }
-    if (digitalRead(o2_alarm_1_DI) == HIGH || digitalRead(o2_alarm_2_DI) == HIGH)
-    {
-        alarm_delay_1++;
-        if (alarm_delay_1 == 50)//5秒=5次循環後濃度仍然H，則alarm
-        {
-            alarm_state = 1;
-        }
+      o2_alarm_flage = true;
+      alarm_state = 2;
     }
     else
     {
-        alarm_delay_1 = 0;
-        alarm_state = 0;
+      o2_alarm_flage = false;
     }
-    Serial.print("alarm_state: ");
-    Serial.println(alarm_state);
-    Serial.print("o2_alarm_DO: ");
-    Serial.println(digitalRead(o2_alarm_DO));
-
-    switch (alarm_state)
-    {
-    case 0: //正常狀態
-        O2_normal();
-        Serial.println("O2_normal()");
-        break;
-    case 1: //濃度異常
-        O2_alarm();
-        Serial.println("O2_alarm() ");
-        break;
-    case 2:
-
-        break;
-
-    }
-    Serial.print("000000000000000000000000000000000000000 ");
-    Serial.print("count1: ");
-    Serial.println(count1);
-    count1++;
-    delay(delay_timer);
+    //重新計數
+    count1 = 0;
+  }
+  
+  choose_alarm_state();
+  
+  Serial.print("count1: ");
+  Serial.println(count1);
+  count1++;
+  delay(delay_timer);
 }
 void O2_alarm()
 {
-    digitalWrite(o2_alarm_DO, HIGH);
-    digitalWrite(interlock_DO, HIGH);
+  digitalWrite(o2_alarm_DO, HIGH);
+  digitalWrite(interlock_DO, HIGH);
 }
 void O2_normal()
 {
-    digitalWrite(o2_alarm_DO, LOW);
-    digitalWrite(interlock_DO, LOW);
+  digitalWrite(o2_alarm_DO, LOW);
+  digitalWrite(interlock_DO, LOW);
 }
 void  fill_tempAI_array()
 {
-    for (int i = 0; i < a_size / 2 + 1; i++)//只需要填滿1/2+1陣列，比一半陣列多就可比較出MAX
-    {
-        temp_AI[i] = temp_o2_sensor_AI;
-    }
-
+  for (int i = 0; i < a_size / 2 + 1; i++)//只需要填滿1/2+1陣列，比一半陣列多就可比較出MAX
+  {
+    temp_AI[i] = real_o2_sensor_AI;
+  }
 }
-
 void quickSort(int arr[], int start, int length) {
-    if (start < length)
+  if (start < length)
+  {
+    int i = start, j = length; float x = arr[start];
+    while (i < j)
     {
-        int i = start, j = length; float x = arr[start];
-        while (i < j)
-        {
-            while (i < j && arr[j] >= x) // 从右向左找第一个小于x的数
-                j--;
-            if (i < j)
-                arr[i++] = arr[j];
-            while (i < j && arr[i] < x) // 从左向右找第一个大于等于x的数
-                i++;
-            if (i < j)
-                arr[j--] = arr[i];
-        }
-        arr[i] = x;
-        quickSort(arr, start, i - 1); // 递归调用
-        quickSort(arr, i + 1, length);
+      while (i < j && arr[j] >= x) // 从右向左找第一个小于x的数
+        j--;
+      if (i < j)
+        arr[i++] = arr[j];
+      while (i < j && arr[i] < x) // 从左向右找第一个大于等于x的数
+        i++;
+      if (i < j)
+        arr[j--] = arr[i];
     }
+    arr[i] = x;
+    quickSort(arr, start, i - 1); // 递归调用
+    quickSort(arr, i + 1, length);
+  }
 }
-
 int counting_sort(int arr[], int len)
 { //清空陣列
-   
-    int c[500] = {0};//0-500ppm
-   
-    
-      
-    Mode_ai = 0;
-   
-    // 統計數字數量
-    for (int i = 0; i <= len; i++)
+
+  int c[500] = { 0 };//0-500ppm
+  Mode_ai = 0;
+  // 統計數字數量
+  for (int i = 0; i <= len; i++)
+  {
+    c[arr[i]]++;
+  }
+  quickSort(arr, 0, a_size);
+  /* for (int i = 0; i <= len; i++)
+   {
+     Serial.print("數值:  ");
+     Serial.print("次數: ");
+     Serial.print(arr[i]);
+     Serial.print(" ");
+     Serial.println(c[arr[i]]);
+   }*/
+   //找出出現最多次  數值
+  int max = c[arr[0]];
+  int max_value = 0;
+  for (int i = 1; i < len; i++)
+  {
+    if (c[arr[i]] >= max)//要=時也要成立，否則會變0
     {
-        c[arr[i]]++;
+      max = c[arr[i]];
+      max_value = arr[i];
     }
-    quickSort(arr, 0, a_size);
-   /* for (int i = 0; i <= len; i++)
-    {
-      Serial.print("數值:  ");
-      Serial.print("次數: ");
-      Serial.print(arr[i]);
-      Serial.print(" ");
-      Serial.println(c[arr[i]]);
-    }*/
-    //找出出現最多次  數值
-    int max = c[arr[0]];
-    int max_value = 0;
-    for (int i = 1; i < len; i++)
-    {
-        if (c[arr[i]] >= max)//要=時也要成立，否則會變0
-        {
-            max = c[arr[i]];
-            max_value = arr[i];
-        }
-       
-    }
-    Mode_ai = max_value;
-    Serial.print("眾數數值: ");//數值
-    Serial.println(max_value);
-    Serial.print("MAX次數:  ");//找出出現最多次
-    Serial.println(max);
-    Serial.print(" ");
-    return Mode_ai;
+  }
+  Mode_ai = max_value;
+  Serial.print("眾數數值: ");//數值
+  Serial.println(max_value);
+  Serial.print("MAX次數:  ");//找出出現最多次
+  Serial.println(max);
+  Serial.print(" ");
+  return Mode_ai;
+}
+void real_measure()
+{
+  real_Singal_convert_Voltage = real_o2_sensor_AI * AI_Voltage_parameter;
+  real_mv_1 = real_Singal_convert_Voltage * 1000;
+  real_o2_sensor_ppm = real_Singal_convert_Voltage * Voltage_ppm_parameter;
 }
 void filter_measure()
 {
-    filter_AI = counting_sort(temp_AI, a_size);
-       f_Singal_convert_Voltage = filter_AI * AI_Voltage_parameter;
-    f_mv_1 = f_Singal_convert_Voltage * 1000;
-    f_o2_sensor_ppm = f_Singal_convert_Voltage * Voltage_ppm_parameter;
-    }
+  filter_AI = counting_sort(temp_AI, a_size);
+  f_Singal_convert_Voltage = filter_AI * AI_Voltage_parameter;
+  f_mv_1 = f_Singal_convert_Voltage * 1000;
+  f_o2_sensor_ppm = f_Singal_convert_Voltage * Voltage_ppm_parameter;
+}
+void diff_measure_value()
+{
+  measured_now = real_o2_sensor_ppm;//當下及時測值
+  diff_value = abs((f_o2_sensor_ppm - measured_now) / measured_now);
+  diff_value_percent = diff_value * 100;
+  Serial.print("紀錄值ppm: ");
+  Serial.print(f_o2_sensor_ppm);
+  Serial.println(" ppm");
+  Serial.print("實際值ppm: ");
+  Serial.print(measured_now);
+  Serial.println(" ppm");
+
+  Serial.print("誤差%: ");
+  Serial.print(diff_value_percent);
+  Serial.println(" %");
+}
+void choose_alarm_state()
+{
+  switch (alarm_state)
+  {
+  case 0: //正常狀態
+    O2_normal();
+    Serial.println("O2_normal()");
+    break;
+  case 1: //濃度異常
+    O2_alarm();
+    Serial.println("O2_alarm() ");
+    break;
+  case 2:
+
+    O2_alarm();
+    Serial.println("O2_alarm() ");
+    break;
+
+  }
+}
